@@ -125,7 +125,7 @@ func (this *AddressController) ExportCSV(c echo.Context) (err error) { // w http
 	wr.Flush() // writes the csv writer data to the buffered data io writer(b(bytes.buffer))
 
 	c.Response().Header().Set("Content-Type", "text/csv")
-	c.Response().Header().Set("Content-Disposition", "attachment;filename=TheCSVFileName.csv")
+	// c.Response().Header().Set("Content-Disposition", "attachment;filename=TheCSVFileName.csv")
 	c.Response().WriteHeader(http.StatusOK)
 
 	c.Response().Write(b.Bytes())

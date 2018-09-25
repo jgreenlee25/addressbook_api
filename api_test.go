@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"sort"
 	"strings"
 	"testing"
 
@@ -95,13 +96,20 @@ func (suite *APITestSuite) TestAddressController_List() {
 
 	if assert.NoError(suite.T(), h.List(c)) {
 		assert.Equal(suite.T(), http.StatusOK, rec.Code)
-		resp := make(map[int]*Address)
+		resp := make([]Address, 0)
 
 		if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
 			suite.T().Error("Error in unmarshalling response", mockDB, rec.Body.String())
 
 		} else {
-			assert.Equal(suite.T(), mockDB, resp)
+			m := make([]Address, 0)
+			for _, val := range mockDB {
+				m = append(m, *val)
+			}
+			sort.Slice(m[:], func(i, j int) bool {
+				return m[i].ID < m[j].ID
+			})
+			assert.Equal(suite.T(), m, resp)
 		}
 	}
 }
