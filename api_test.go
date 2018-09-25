@@ -141,13 +141,11 @@ func (suite *APITestSuite) TestAddressController_ImportCSV() {
 }
 
 func (suite *APITestSuite) TestAddressController_ExportCSV() {
-	// e := echo.New()
-	// req := httptest.NewRequest(echo.GET, "/address/export", strings.NewReader(addressJSON))
-	// req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	// rec := httptest.NewRecorder()
-	// c := e.NewContext(req, rec)
-	// h := NewAddressController(mockDB)
-
+	rec, c := createEchoContext("GET", "/address/export", strings.NewReader(""))
+	h := NewAddressController(mockDB)
+	if assert.NoError(suite.T(), h.ExportCSV(c)) {
+		assert.Equal(suite.T(), http.StatusOK, rec.Code)
+	}
 }
 
 // HELPERS
