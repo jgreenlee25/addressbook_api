@@ -3,8 +3,6 @@ package main
 import (
 	"bytes"
 	"encoding/csv"
-	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"sort"
@@ -13,10 +11,6 @@ import (
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
 )
-
-// TODO: import/export CSV
-// TODO: *optional* rewrite Echo API to HTTP API w/ native testing
-// TODO: check REST API guidelines to make sure we're returning the correct status codes
 
 // CLASSES/INTERFACES AND STRUCTS
 type Controller interface {
@@ -125,7 +119,7 @@ func (this *AddressController) ExportCSV(c echo.Context) (err error) { // w http
 	wr.Flush() // writes the csv writer data to the buffered data io writer(b(bytes.buffer))
 
 	c.Response().Header().Set("Content-Type", "text/csv")
-	// c.Response().Header().Set("Content-Disposition", "attachment;filename=TheCSVFileName.csv")
+	// c.Response().Header().Set("Content-Disposition", "attachment;filename=output.csv")
 	c.Response().WriteHeader(http.StatusOK)
 
 	c.Response().Write(b.Bytes())
@@ -135,8 +129,15 @@ func (this *AddressController) ExportCSV(c echo.Context) (err error) { // w http
 
 func (this *AddressController) ImportCSV(c echo.Context) (err error) {
 	if payload, err := ReadCSVFromHttpRequest(c.Request()); err == nil {
-		debug("payload", payload)
-
+		for _, elem := range payload {
+			var a Address
+			a.First = elem[0]
+			a.Last = elem[1]
+			a.Email = elem[2]
+			a.Phone = elem[3]
+			this.db[this.seq] = &a
+			this.seq++
+		}
 	} else {
 		return c.JSON(400, http.StatusText(400))
 	}
@@ -167,6 +168,7 @@ func main() {
 	// Middleware
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
+	e.Pre(middleware.RemoveTrailingSlash())
 
 	data := make(map[int]*Address)
 
@@ -184,14 +186,14 @@ func main() {
 }
 
 // HELPERS
-func debug(s string, o interface{}) {
-	if os, ok := o.(string); ok {
-		fmt.Println(s + " = " + os)
-
-	} else {
-		fmt.Printf(s+" = %#v\n", o)
-
-		response, _ := json.MarshalIndent(&o, "", "  ")
-		fmt.Println(string(response))
-	}
-}
+// func debug(s string, o interface{}) {
+// 	if os, ok := o.(string); ok {
+// 		fmt.Println(s + " = " + os)
+//
+// 	} else {
+// 		fmt.Printf(s+" = %#v\n", o)
+//
+// 		response, _ := json.MarshalIndent(&o, "", "  ")
+// 		fmt.Println(string(response))
+// 	}
+// }
