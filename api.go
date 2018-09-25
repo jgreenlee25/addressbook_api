@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sort"
 	"strconv"
 
 	"github.com/labstack/echo"
@@ -16,7 +17,6 @@ import (
 // TODO: import/export CSV
 // TODO: *optional* rewrite Echo API to HTTP API w/ native testing
 // TODO: check REST API guidelines to make sure we're returning the correct status codes
-// TODO: test w/ Postman
 
 // CLASSES/INTERFACES AND STRUCTS
 type Controller interface {
@@ -46,7 +46,7 @@ func NewAddressController(data map[int]*Address) *AddressController {
 	return &AddressController{db: data, seq: 1}
 }
 
-func (this AddressController) Get(c echo.Context) (err error) {
+func (this *AddressController) Get(c echo.Context) (err error) {
 	id, _ := strconv.Atoi(c.Param("id"))
 	if val, ok := this.db[id]; ok {
 		return c.JSON(http.StatusOK, val)
@@ -54,7 +54,7 @@ func (this AddressController) Get(c echo.Context) (err error) {
 	return c.JSON(http.StatusNotFound, http.StatusText(http.StatusNotFound))
 }
 
-func (this AddressController) Post(c echo.Context) (err error) {
+func (this *AddressController) Post(c echo.Context) (err error) {
 	payload := &Address{
 		ID: this.seq,
 	}
@@ -69,7 +69,7 @@ func (this AddressController) Post(c echo.Context) (err error) {
 	return c.JSON(http.StatusCreated, payload)
 }
 
-func (this AddressController) Put(c echo.Context) (err error) {
+func (this *AddressController) Put(c echo.Context) (err error) {
 	payload := new(Address)
 	if err := c.Bind(&payload); err != nil {
 		return c.JSON(400, http.StatusText(400))
@@ -90,17 +90,24 @@ func (this AddressController) Put(c echo.Context) (err error) {
 	return c.JSON(http.StatusOK, this.db[id])
 }
 
-func (this AddressController) Delete(c echo.Context) (err error) {
+func (this *AddressController) Delete(c echo.Context) (err error) {
 	id, _ := strconv.Atoi(c.Param("id"))
 	delete(this.db, id)
 	return c.NoContent(http.StatusNoContent)
 }
 
-func (this AddressController) List(c echo.Context) (err error) {
-	return c.JSON(http.StatusOK, this.db)
+func (this *AddressController) List(c echo.Context) (err error) {
+	m := make([]*Address, 0, len(this.db))
+	for _, val := range this.db {
+		m = append(m, val)
+	}
+	sort.Slice(m[:], func(i, j int) bool {
+		return m[i].ID < m[j].ID
+	})
+	return c.JSON(http.StatusOK, m)
 }
 
-func (this AddressController) ExportCSV(c echo.Context) (err error) { // w http.ResponseWriter, r *http.Request
+func (this *AddressController) ExportCSV(c echo.Context) (err error) { // w http.ResponseWriter, r *http.Request
 	b := &bytes.Buffer{}   // creates IO Writer
 	wr := csv.NewWriter(b) // creates a csv writer that uses the io buffer.
 
@@ -126,7 +133,7 @@ func (this AddressController) ExportCSV(c echo.Context) (err error) { // w http.
 	return nil
 }
 
-func (this AddressController) ImportCSV(c echo.Context) (err error) {
+func (this *AddressController) ImportCSV(c echo.Context) (err error) {
 	if payload, err := ReadCSVFromHttpRequest(c.Request()); err == nil {
 		debug("payload", payload)
 
@@ -138,11 +145,9 @@ func (this AddressController) ImportCSV(c echo.Context) (err error) {
 }
 
 func ReadCSVFromHttpRequest(req *http.Request) ([][]string, error) {
-	// parse POST body as csv
 	reader := csv.NewReader(req.Body)
 	var results [][]string
 	for {
-		// read one row from csv
 		record, err := reader.Read()
 		if err == io.EOF {
 			break
@@ -151,7 +156,6 @@ func ReadCSVFromHttpRequest(req *http.Request) ([][]string, error) {
 			return nil, err
 		}
 
-		// add record to result set
 		results = append(results, record)
 	}
 	return results, nil
@@ -167,7 +171,7 @@ func main() {
 	data := make(map[int]*Address)
 
 	// Routing
-	ac := NewAddressController(data)
+	ac := *NewAddressController(data)
 	e.GET("/address/:id", ac.Get)
 	e.GET("/address", ac.List)
 	e.GET("/address/export", ac.ExportCSV)
