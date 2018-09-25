@@ -115,13 +115,29 @@ func (suite *APITestSuite) TestAddressController_List() {
 }
 
 func (suite *APITestSuite) TestAddressController_ImportCSV() {
-	// e := echo.New()
-	// req := httptest.NewRequest(echo.POST, "/address/import", strings.NewReader(addressJSON))
-	// req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	// rec := httptest.NewRecorder()
-	// c := e.NewContext(req, rec)
-	// h := NewAddressController(mockDB)
+	input := make([][]string, 0)
+	for _, record := range mockDB {
+		strs := make([]string, 0)
+		strs = append(strs, record.First)
+		strs = append(strs, record.Last)
+		strs = append(strs, record.Email)
+		strs = append(strs, record.Phone)
+		input = append(input, strs)
+	}
 
+	var tmp []string
+	for _, v1 := range input {
+		s := strings.Join(v1, ",")
+		tmp = append(tmp, s)
+	}
+	s := strings.Join(tmp, ",")
+
+	rec, c := createEchoContext("POST", "/address/import", strings.NewReader(s))
+	h := NewAddressController(mockDB)
+
+	if assert.NoError(suite.T(), h.ImportCSV(c)) {
+		assert.Equal(suite.T(), http.StatusOK, rec.Code)
+	}
 }
 
 func (suite *APITestSuite) TestAddressController_ExportCSV() {
